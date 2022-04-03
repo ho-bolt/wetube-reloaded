@@ -10,7 +10,6 @@ const PORT = 4000;
 const app = express();
 
 
-console.log(process.cwd())
 app.use(morgan("dev"))
 //global router
 
