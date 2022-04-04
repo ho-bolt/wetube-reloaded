@@ -1,10 +1,20 @@
 
 import Video from "../models/Video";
 
+//callback부분
+// Video.find({}, (error, videos) => {
+//     if (error) {
+//         return res.render("server-error")
+//     }return res.render("server-error")
+// }) 
+export const home = async (req, res) => {
+    try {
+        const videos = await Video.find({})
+        return res.render("home", { pageTitle: "Home", videos })
+    } catch (error) {
+        return res.render("server-error", { error })
+    }
 
-export const home = (req, res) => {
-    Video.find({}, (error, videos) => { })
-    return res.render("home", { pageTitle: "Home" })
 }
 export const watch = (req, res) => {
     // const id = req.params.id;
@@ -30,9 +40,24 @@ export const postEdit = (req, res) => {
 export const getUpload = (req, res) => {
     return res.render("upload", { pageTitle: "Upload video" })
 }
-export const postUpload = (req, res) => {
-    const { title } = req.body;
+export const postUpload = async (req, res) => {
+    const { title, description, hashtags } = req.body;
+    try {
 
+        await Video.create({
+            title,
+            description,
+            hashtags: hashtags.split(", ").map(word => `#${word}`),
 
-    return res.redirect("/")
+        });
+        return res.redirect("/")
+    } catch (error) {
+        console.log(error)
+        return res.render("upload", {
+            pageTitle: "Upload Video",
+            errorMessage: error._message,
+        });
+    }
+
+    //save는 promise를 return한다.
 }
