@@ -1,13 +1,13 @@
 import express from "express";
 const videoRouter = express.Router();
-import { watch, edit, upload, remove } from "../controller/videoController"
+import { watch, getEdit, postEdit, getUpload, postUpload } from "../controller/videoController"
 
 
 
 
-videoRouter.get("/upload", upload)
 //오직 숫자만 받는다.
 videoRouter.get("/:id(\\d+)", watch)
-videoRouter.get("/:id(\\d+)/edit", edit)
-videoRouter.get("/:id(\\d+)/delete", remove)
+videoRouter.route("/:id(\\d+)/edit").get(getEdit).post(postEdit);
+videoRouter.route("/upload").get(getUpload).post(postUpload)
+
 export default videoRouter;
