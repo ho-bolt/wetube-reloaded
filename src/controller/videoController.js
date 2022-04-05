@@ -9,45 +9,59 @@ import Video from "../models/Video";
 // }) 
 export const home = async (req, res) => {
     try {
-        const videos = await Video.find({})
+        const videos = await Video.find({}).sort({ createdAt: "desc" })
         return res.render("home", { pageTitle: "Home", videos })
     } catch (error) {
         return res.render("server-error", { error })
     }
 
 }
-export const watch = (req, res) => {
-    // const id = req.params.id;
-    //파라미터 받고
+export const watch = async (req, res) => {
     const { id } = req.params;
-    //id에 대응하는 데이터 video에 넣기
-
-    //그 데이터의 title과 데이터 자체를 watch로 보내줘
-
-    return res.render("watch", { pageTitle: `Watch` })
+    const video = await Video.findById(id);
+    console.log("@@2", video)
+    if (!video) {
+        return res.render("404", { pageTitle: "Video not found" });
+    }
+    return res.render("watch", { pageTitle: video.title, video })
 }
 
-export const getEdit = (req, res) => {
+export const getEdit = async (req, res) => {
     const { id } = req.params;
-    return res.render("edit", { pageTitle: `Editing ` })
+    const video = await Video.findById(id)
+    if (!video) {
+        return res.render("404", { pageTitle: "Video not found" });
+    }
+    return res.render("edit", { pageTitle: `Edit ${video.title} `, video })
 }
-export const postEdit = (req, res) => {
+export const postEdit = async (req, res) => {
     const { id } = req.params;
-    const { title } = req.body;
+    const { title, description, hashtags } = req.body;
+    //exits는 true,false를 리턴한다. 
+    const video = await Video.exists({ _id: id });
+    if (!video) {
+        return res.render("404", { pageTitle: "Video not found" });
+    }
+    await Video.findByIdAndUpdate(id, {
+        title,
+        description,
+        hashtags: Video.formatHashtags(hashtags)
+
+    })
     return res.redirect(`/videos/${id}`)
 }
 
 export const getUpload = (req, res) => {
     return res.render("upload", { pageTitle: "Upload video" })
 }
+
 export const postUpload = async (req, res) => {
     const { title, description, hashtags } = req.body;
     try {
-
         await Video.create({
             title,
             description,
-            hashtags: hashtags.split(", ").map(word => `#${word}`),
+            hashtags: Video.formatHashtags(hashtags)
 
         });
         return res.redirect("/")
@@ -60,4 +74,26 @@ export const postUpload = async (req, res) => {
     }
 
     //save는 promise를 return한다.
+}
+
+
+export const deleteVideo = async (req, res) => {
+    const { id } = req.params;
+    await Video.findByIdAndDelete(id);
+
+    return res.redirect('/')
+}
+
+export const search = async (req, res) => {
+    const { keyword } = req.query;
+    let videos = []
+    if (keyword) {
+        videos = await Video.find({
+            title: {
+                $regex: new RegExp(keyword, "i") //i는 대소문자 구분 x keyword에 포함만 된다면 찾아줌
+                // keyword로 시작하는 것만 하고 싶다면 `^${keyword}
+            },
+        })
+    }
+    return res.render("search", { pageTitle: "Search", videos })
 }

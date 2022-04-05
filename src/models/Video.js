@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 
+
+
 const videoSchema = new mongoose.Schema({
     //클라이언트에서 해킹해서 고칠 수 있기 때문에 db에도 해줘야한다.
     title: { type: String, required: true, trim: true, maxlength: 80 },
@@ -13,5 +15,12 @@ const videoSchema = new mongoose.Schema({
     },
 });
 
+
+videoSchema.static('formatHashtags', function (hashtags) {
+    return hashtags.split(",").map((word) => (word.startsWith("#") ? word : `#${word}`));
+})
+
+
 const Video = mongoose.model("Video", videoSchema)
+
 export default Video;
