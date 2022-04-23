@@ -50,7 +50,7 @@ export const postLogin = async (req, res) => {
     //check if account exists
     const { username, password } = req.body;
     const pageTitle = "login"
-    const user = await User.findOne({ username });
+    const user = await User.findOne({ username, sociaOnly: false });
     if (!user) {
         return res.status(400).render("login", { pageTitle, errorMessage: "An account with this username does not exists" })
     }
@@ -114,6 +114,7 @@ export const finishGithubLogin = async (req, res) => {
             }
         })
         ).json()
+        console.log(userData)
         const emailData = await (await fetch(`${apiUrl}/user/emails`, {
             headers: {
                 Authorization: `token ${access_token}`
@@ -127,20 +128,13 @@ export const finishGithubLogin = async (req, res) => {
         if (!emailObj) {
             return res.redirect('/login')
         }
-        const existUser = await User.findOne({ email: emailObj.email });
-        if (existUser) {
+        let user = await User.findOne({ email: emailObj.email });
+        if (!user) {
             //걍 회원가입해서 만든 이메일이 있고
             //깃헙으로 소셜로그인 했는데 그때 같은 이메일이 있다면, 
             // 로그인 시켜준다.
-            req.session.loggedIn = true;
-            req.session.user = existUser;
-            return res.redirect("/")
-        } else {
-            //create an account 
-            // 깃헙으로 로그인 타서 들어왔는데 깃헙에서 갖고 있는 이메일이  db에 없다?? 그러면
-            // 회원가입을 시켜준다. 
-            //password없이 소셜로 로그인 시켜버린다.
-            const user = await User.create({
+            user = await User.create({
+                avatarUrl: userData.avatar_url,
                 name: userData.name,
                 username: userData.login,
                 email: emailObj.email,
@@ -148,11 +142,15 @@ export const finishGithubLogin = async (req, res) => {
                 sociaOnly: true,
                 location: userData.location
             });
-            req.session.loggedIn = true;
-            req.session.user = user;
-            return res.redirect("/")
-
         }
+        //create an account 
+        // 깃헙으로 로그인 타서 들어왔는데 깃헙에서 갖고 있는 이메일이  db에 없다?? 그러면
+        // 회원가입을 시켜준다. 
+        //password없이 소셜로 로그인 시켜버린다.
+        req.session.loggedIn = true;
+        req.session.user = user;
+        return res.redirect("/")
+
         //중복된 이메일을 어케 처리할 것인가?
     } else {
         return res.redirect('/login')
@@ -162,7 +160,10 @@ export const finishGithubLogin = async (req, res) => {
 
 export const edit = (req, res) => res.send("edit")
 export const deleteUser = (req, res) => res.send("delete user")
-export const logout = (req, res) => res.send("logout")
+export const logout = (req, res) => {
+    req.session.destroy();
+    return res.redirect("/")
+}
 export const see = (req, res) => res.send("see")
 
 
