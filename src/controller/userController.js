@@ -1,5 +1,8 @@
 import User from "../models/User";
+import fetch from "node-fetch";
 import bcrypt from "bcrypt";
+import { render } from "express/lib/response";
+import { emit } from "nodemon";
 
 
 
@@ -66,7 +69,96 @@ export const postLogin = async (req, res) => {
     return res.redirect("/")
 }
 
+export const startGithubLogin = (req, res) => {
+    const baseUrl = "https://github.com/login/oauth/authorize"
+    const config = {
+        client_id: process.env.GH_CLIENT,
+        allow_signup: false,
+        scope: "read:user user:email"
+    };
+    //scope에 명시하면 GitHub이 code를 준다. 
+    const params = new URLSearchParams(config).toString();
+    const finalUrl = `${baseUrl}?${params}`;
+    return res.redirect(finalUrl)
+}
 
+//http://localhost:4000/users/github/finish?code=a58a462802f8e28649d4
+export const finishGithubLogin = async (req, res) => {
+    //유저를 code와 함게 돌려 보내준다.
+    const baseUrl = "https://github.com/login/oauth/access_token";
+    const config = {
+        client_id: process.env.GH_CLIENT,
+        client_secret: process.env.GH_SECERT,
+        code: req.query.code
+    }
+    //이 code 이다. 그리고 이 code가 access_token으로 바뀐다.
+    const params = new URLSearchParams(config).toString();
+    const finalUrl = `${baseUrl}?${params}`;
+    //fetch를 통해서 데이터를 받아오고 
+    const tokenRequest = await (
+        await fetch(finalUrl, {
+            method: "POST",
+            headers: {
+                Accept: "application/json"
+            },
+        })
+    ).json();
+    //그 데이터에서 json을 추출한다.
+    if ("access_token" in tokenRequest) {
+        //access api 
+        const { access_token } = tokenRequest;
+        const apiUrl = "https://api.github.com"
+        const userData = await (await fetch(`${apiUrl}/user`, {
+            headers: {
+                Authorization: `token ${access_token}`
+            }
+        })
+        ).json()
+        const emailData = await (await fetch(`${apiUrl}/user/emails`, {
+            headers: {
+                Authorization: `token ${access_token}`
+            }
+        })
+        ).json()
+        // console.log(emailData)
+        const emailObj = emailData.find(
+            (email) => email.primary === true && email.verified === true
+        );
+        if (!emailObj) {
+            return res.redirect('/login')
+        }
+        const existUser = await User.findOne({ email: emailObj.email });
+        if (existUser) {
+            //걍 회원가입해서 만든 이메일이 있고
+            //깃헙으로 소셜로그인 했는데 그때 같은 이메일이 있다면, 
+            // 로그인 시켜준다.
+            req.session.loggedIn = true;
+            req.session.user = existUser;
+            return res.redirect("/")
+        } else {
+            //create an account 
+            // 깃헙으로 로그인 타서 들어왔는데 깃헙에서 갖고 있는 이메일이  db에 없다?? 그러면
+            // 회원가입을 시켜준다. 
+            //password없이 소셜로 로그인 시켜버린다.
+            const user = await User.create({
+                name: userData.name,
+                username: userData.login,
+                email: emailObj.email,
+                password: "",
+                sociaOnly: true,
+                location: userData.location
+            });
+            req.session.loggedIn = true;
+            req.session.user = user;
+            return res.redirect("/")
+
+        }
+        //중복된 이메일을 어케 처리할 것인가?
+    } else {
+        return res.redirect('/login')
+    }
+    // res.send(JSON.stringify(json))
+}
 
 export const edit = (req, res) => res.send("edit")
 export const deleteUser = (req, res) => res.send("delete user")
