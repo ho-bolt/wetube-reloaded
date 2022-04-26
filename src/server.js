@@ -39,7 +39,6 @@ app.use(
 //sessionStore는 session을 저장하는 곳
 app.use((req, res, next) => {
     req.sessionStore.all((error, sessions) => {
-
         next()
     })
 })

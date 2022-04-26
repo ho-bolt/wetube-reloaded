@@ -66,7 +66,7 @@ export const postUpload = async (req, res) => {
         return res.redirect("/")
     } catch (error) {
         console.log(error)
-        return res.stauts(400).render("upload", {
+        return res.status(400).render("upload", {
             pageTitle: "Upload Video",
             errorMessage: error._message,
         });
@@ -88,7 +88,7 @@ export const search = async (req, res) => {
     let videos = []
     if (keyword) {
         videos = await Video.find({
-            title: {
+            hashtags: {
                 $regex: new RegExp(keyword, "i") //i는 대소문자 구분 x keyword에 포함만 된다면 찾아줌
                 // keyword로 시작하는 것만 하고 싶다면 `^${keyword}
             },

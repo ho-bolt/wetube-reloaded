@@ -162,6 +162,7 @@ export const edit = (req, res) => res.send("edit")
 export const deleteUser = (req, res) => res.send("delete user")
 export const logout = (req, res) => {
     req.session.destroy();
+    console.log("로그아웃합니당")
     return res.redirect("/")
 }
 export const see = (req, res) => res.send("see")
